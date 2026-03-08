@@ -161,6 +161,7 @@ export interface backendInterface {
     getChildInfo(childId: bigint): Promise<Child | null>;
     getChildTransactions(childId: bigint): Promise<Array<Transaction>>;
     getChildren(): Promise<Array<Child>>;
+    getChildrenPublic(): Promise<Array<Child>>;
     getChoreAssignments(choreId: bigint): Promise<Array<bigint>>;
     getChoresForChild(childId: bigint): Promise<Array<ChoreWithAvailability>>;
     getPendingCompletions(): Promise<Array<ChoreCompletion>>;
@@ -413,6 +414,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getChildren();
+            return result;
+        }
+    }
+    async getChildrenPublic(): Promise<Array<Child>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getChildrenPublic();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getChildrenPublic();
             return result;
         }
     }

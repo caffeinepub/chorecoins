@@ -95,6 +95,7 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getChildren' : IDL.Func([], [IDL.Vec(Child)], ['query']),
+  'getChildrenPublic' : IDL.Func([], [IDL.Vec(Child)], ['query']),
   'getChoreAssignments' : IDL.Func([IDL.Nat], [IDL.Vec(IDL.Nat)], ['query']),
   'getChoresForChild' : IDL.Func(
       [IDL.Nat],
@@ -212,6 +213,7 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getChildren' : IDL.Func([], [IDL.Vec(Child)], ['query']),
+    'getChildrenPublic' : IDL.Func([], [IDL.Vec(Child)], ['query']),
     'getChoreAssignments' : IDL.Func([IDL.Nat], [IDL.Vec(IDL.Nat)], ['query']),
     'getChoresForChild' : IDL.Func(
         [IDL.Nat],

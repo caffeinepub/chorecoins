@@ -72,6 +72,7 @@ export interface _SERVICE {
   'getChildInfo' : ActorMethod<[bigint], [] | [Child]>,
   'getChildTransactions' : ActorMethod<[bigint], Array<Transaction>>,
   'getChildren' : ActorMethod<[], Array<Child>>,
+  'getChildrenPublic' : ActorMethod<[], Array<Child>>,
   'getChoreAssignments' : ActorMethod<[bigint], Array<bigint>>,
   'getChoresForChild' : ActorMethod<[bigint], Array<ChoreWithAvailability>>,
   'getPendingCompletions' : ActorMethod<[], Array<ChoreCompletion>>,

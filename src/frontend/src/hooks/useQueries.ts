@@ -64,6 +64,18 @@ export function useGetChildren() {
   });
 }
 
+export function useGetChildrenPublic() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Child[]>({
+    queryKey: [...queryKeys.children, "public"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getChildrenPublic();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
 export function useGetChildInfo(childId: bigint) {
   const { actor, isFetching } = useActor();
   return useQuery<Child | null>({

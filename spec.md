@@ -2,42 +2,32 @@
 
 ## Current State
 
-- Parents can add/manage chores (name, amount, frequency, active/inactive) globally
-- Children see ALL active chores -- no per-child assignment
-- Children can tap "Done!" to submit a chore completion; parents approve/reject
-- Approval credits the child's balance
-- Parent can deduct money from a child with a note
+The app has a full chore tracking system with:
+- `RoleSelection` page showing children as clickable cards, and a Parent Login button
+- `ChildDashboard` page with chores list, "Done!" buttons to submit completions, pending/approved states, and recent earnings
+- `ParentDashboard` with Children, Chores, and Approvals tabs
+- `ApprovalsTab` showing pending completions with Approve/Reject buttons
+- Backend: `getChildren()` requires admin auth, `getChildrenPublic()` does not exist yet
+- Backend: `getChoresForChild()`, `submitChoreCompletion()`, `getChildCompletions()`, `getChildInfo()` are all public (no auth required)
+- Backend: `approveCompletion()` and `rejectCompletion()` require admin
 
 ## Requested Changes (Diff)
 
 ### Add
-- `choreAssignments` storage: maps `choreId -> [childId]` (which children are assigned to a chore)
-- Backend: `assignChoreToChildren(choreId, childIds)` -- sets the list of children assigned to a chore (admin only)
-- Backend: `getChoreAssignments(choreId)` -- returns list of assigned child IDs (admin only)
-- Backend: `getAllChoreAssignments()` -- returns all assignments as `[(choreId, [childId])]` (admin only)
-- In `getChoresForChild(childId)`: filter to only return chores where childId is in the assignment list (or chore has no assignments = available to all)
-- UI: In the Chores tab (parent), each chore card has an "Assign" button/section where the parent can check/uncheck which children the chore applies to
-- Children's dashboard only shows chores they are assigned to (or all chores if a chore has no assignments)
+- A public `getChildrenPublic()` backend function that returns all children without requiring admin auth, so the role selection screen can list children without the admin token
 
 ### Modify
-- `getChoresForChild(childId)`: filter chores so only assigned ones appear (if assignments exist for that chore)
-- ChoresTab: add child assignment multi-select/checkbox UI per chore
-- ChoreCompletion approval flow: unchanged (still works the same)
+- `useGetChildren()` hook: split into two -- keep the admin version for the parent dashboard, add a new `useGetChildrenPublic()` hook that doesn't require auth and uses the public backend endpoint
+- `RoleSelection.tsx`: use `useGetChildrenPublic()` instead of `useGetChildren()` so children can see and tap their name without the admin token
+- `ChildrenTab.tsx` (parent dashboard): continues to use the admin `useGetChildren()` hook
 
 ### Remove
-- Nothing removed; backward-compatible (chores with no assignments still show to all children)
+- Nothing
 
 ## Implementation Plan
 
-1. **Backend (`main.mo`)**:
-   - Add `choreAssignments` map: `Map<Nat, [Nat]>` (choreId -> list of childIds)
-   - Add `assignChoreToChildren(choreId: Nat, childIds: [Nat]) : async Bool` (admin only)
-   - Add `getChoreAssignments(choreId: Nat) : async [Nat]` (admin only)
-   - Add `getAllChoreAssignments() : async [(Nat, [Nat])]` (admin only)
-   - Update `getChoresForChild`: if `choreAssignments.get(choreId)` has entries, only include chore if childId is in the list; if no entries (empty/null), include for all children
-
-2. **Frontend**:
-   - Update `useQueries.ts` hooks: add `useAssignChoreToChildren`, `useGetAllChoreAssignments`
-   - Update ChoresTab: after each chore card, show a collapsible "Who's this for?" section with checkboxes for each child; load children and assignments; save on change
-   - ChildDashboard: `getChoresForChild` backend already handles filtering, so no change needed there
-   - ApprovalsTab: show child name alongside chore name in pending approvals
+1. Add `getChildrenPublic()` to `main.mo` -- public query, no assertAdmin, returns same data as `getChildren()`
+2. Regenerate backend types / update `backend.d.ts` to include `getChildrenPublic(): Promise<Array<Child>>`
+3. Add `useGetChildrenPublic()` hook to `useQueries.ts` using the new endpoint
+4. Update `RoleSelection.tsx` to call `useGetChildrenPublic()` instead of `useGetChildren()`
+5. Validate and deploy

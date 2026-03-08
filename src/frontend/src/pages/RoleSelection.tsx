@@ -4,7 +4,7 @@ import { ChevronRight, Loader2, Shield } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect } from "react";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { useGetChildren } from "../hooks/useQueries";
+import { useGetChildrenPublic } from "../hooks/useQueries";
 
 const CHILD_COLORS = [
   "from-yellow-300 to-orange-300",
@@ -49,7 +49,7 @@ export function RoleSelection({
 }: RoleSelectionProps) {
   const { login, isLoggingIn, isLoginSuccess, identity } =
     useInternetIdentity();
-  const { data: children, isLoading: childrenLoading } = useGetChildren();
+  const { data: children, isLoading: childrenLoading } = useGetChildrenPublic();
 
   // After login succeeds, navigate to parent dashboard
   useEffect(() => {

@@ -13,10 +13,11 @@ import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
-import Migration "migration";
+
+
 
 // Enable state migration with `with` clause
-(with migration = Migration.run)
+
 actor {
   // --- Types ---
   public type ChoreFrequency = {
@@ -290,6 +291,10 @@ actor {
 
   public query ({ caller }) func getChildren() : async [Child] {
     assertAdmin(caller);
+    children.values().toArray().sort();
+  };
+
+  public query ({ caller }) func getChildrenPublic() : async [Child] {
     children.values().toArray().sort();
   };
 
