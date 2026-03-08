@@ -71,7 +71,13 @@ export const idlService = IDL.Service({
     ),
   'approveCompletion' : IDL.Func([IDL.Nat], [IDL.Bool], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'assignChoreToChildren' : IDL.Func([IDL.Nat, IDL.Vec(IDL.Nat)], [], []),
   'deductMoney' : IDL.Func([IDL.Nat, IDL.Int, IDL.Text], [IDL.Bool], []),
+  'getAllChoreAssignments' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Tuple(IDL.Nat, IDL.Vec(IDL.Nat)))],
+      ['query'],
+    ),
   'getAllChores' : IDL.Func([], [IDL.Vec(Chore)], ['query']),
   'getAllCompletions' : IDL.Func([], [IDL.Vec(ChoreCompletion)], ['query']),
   'getAllTransactions' : IDL.Func([], [IDL.Vec(Transaction)], ['query']),
@@ -89,6 +95,7 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getChildren' : IDL.Func([], [IDL.Vec(Child)], ['query']),
+  'getChoreAssignments' : IDL.Func([IDL.Nat], [IDL.Vec(IDL.Nat)], ['query']),
   'getChoresForChild' : IDL.Func(
       [IDL.Nat],
       [IDL.Vec(ChoreWithAvailability)],
@@ -181,7 +188,13 @@ export const idlFactory = ({ IDL }) => {
       ),
     'approveCompletion' : IDL.Func([IDL.Nat], [IDL.Bool], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'assignChoreToChildren' : IDL.Func([IDL.Nat, IDL.Vec(IDL.Nat)], [], []),
     'deductMoney' : IDL.Func([IDL.Nat, IDL.Int, IDL.Text], [IDL.Bool], []),
+    'getAllChoreAssignments' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(IDL.Nat, IDL.Vec(IDL.Nat)))],
+        ['query'],
+      ),
     'getAllChores' : IDL.Func([], [IDL.Vec(Chore)], ['query']),
     'getAllCompletions' : IDL.Func([], [IDL.Vec(ChoreCompletion)], ['query']),
     'getAllTransactions' : IDL.Func([], [IDL.Vec(Transaction)], ['query']),
@@ -199,6 +212,7 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getChildren' : IDL.Func([], [IDL.Vec(Child)], ['query']),
+    'getChoreAssignments' : IDL.Func([IDL.Nat], [IDL.Vec(IDL.Nat)], ['query']),
     'getChoresForChild' : IDL.Func(
         [IDL.Nat],
         [IDL.Vec(ChoreWithAvailability)],

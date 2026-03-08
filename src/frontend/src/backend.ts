@@ -149,7 +149,9 @@ export interface backendInterface {
     addChore(name: string, amountCents: bigint, frequency: ChoreFrequency, isActive: boolean): Promise<bigint>;
     approveCompletion(completionId: bigint): Promise<boolean>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    assignChoreToChildren(choreId: bigint, childIds: Array<bigint>): Promise<void>;
     deductMoney(childId: bigint, amountCents: bigint, note: string): Promise<boolean>;
+    getAllChoreAssignments(): Promise<Array<[bigint, Array<bigint>]>>;
     getAllChores(): Promise<Array<Chore>>;
     getAllCompletions(): Promise<Array<ChoreCompletion>>;
     getAllTransactions(): Promise<Array<Transaction>>;
@@ -159,6 +161,7 @@ export interface backendInterface {
     getChildInfo(childId: bigint): Promise<Child | null>;
     getChildTransactions(childId: bigint): Promise<Array<Transaction>>;
     getChildren(): Promise<Array<Child>>;
+    getChoreAssignments(choreId: bigint): Promise<Array<bigint>>;
     getChoresForChild(childId: bigint): Promise<Array<ChoreWithAvailability>>;
     getPendingCompletions(): Promise<Array<ChoreCompletion>>;
     getTransactions(childId: bigint): Promise<Array<Transaction>>;
@@ -245,6 +248,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async assignChoreToChildren(arg0: bigint, arg1: Array<bigint>): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.assignChoreToChildren(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.assignChoreToChildren(arg0, arg1);
+            return result;
+        }
+    }
     async deductMoney(arg0: bigint, arg1: bigint, arg2: string): Promise<boolean> {
         if (this.processError) {
             try {
@@ -256,6 +273,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.deductMoney(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async getAllChoreAssignments(): Promise<Array<[bigint, Array<bigint>]>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllChoreAssignments();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllChoreAssignments();
             return result;
         }
     }
@@ -382,6 +413,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getChildren();
+            return result;
+        }
+    }
+    async getChoreAssignments(arg0: bigint): Promise<Array<bigint>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getChoreAssignments(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getChoreAssignments(arg0);
             return result;
         }
     }

@@ -331,6 +331,42 @@ export function useDeductMoney() {
   });
 }
 
+// ── Chore Assignments ────────────────────────────────────────
+
+export const choreAssignmentsKey = ["choreAssignments"];
+
+export function useGetAllChoreAssignments() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Array<[bigint, Array<bigint>]>>({
+    queryKey: choreAssignmentsKey,
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllChoreAssignments();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useAssignChoreToChildren() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      choreId,
+      childIds,
+    }: {
+      choreId: bigint;
+      childIds: Array<bigint>;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.assignChoreToChildren(choreId, childIds);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: choreAssignmentsKey });
+    },
+  });
+}
+
 // ── Admin check ──────────────────────────────────────────────
 
 export function useIsAdmin() {

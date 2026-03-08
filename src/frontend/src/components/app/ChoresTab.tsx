@@ -22,17 +22,20 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { Check, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, Loader2, Pencil, Plus, Trash2, Users, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { type Chore, ChoreFrequency } from "../../backend.d";
+import { type Child, type Chore, ChoreFrequency } from "../../backend.d";
 import {
   centsToUSD,
   dollarsToCents,
   frequencyLabel,
   useAddChore,
+  useAssignChoreToChildren,
+  useGetAllChoreAssignments,
   useGetAllChores,
+  useGetChildren,
   useRemoveChore,
   useUpdateChore,
 } from "../../hooks/useQueries";
@@ -63,6 +66,24 @@ function frequencyEmoji(f: ChoreFrequency): string {
   }
 }
 
+const CHILD_EMOJIS = [
+  "🌟",
+  "🦊",
+  "🐬",
+  "🦋",
+  "🦄",
+  "🐻",
+  "🐸",
+  "🦁",
+  "🌈",
+  "🎈",
+];
+
+function getChildEmoji(name: string): string {
+  const idx = name.charCodeAt(0) % CHILD_EMOJIS.length;
+  return CHILD_EMOJIS[idx];
+}
+
 interface ChoreFormData {
   name: string;
   amount: string;
@@ -79,8 +100,155 @@ function defaultForm(): ChoreFormData {
   };
 }
 
+// ── Child Assignment Row ─────────────────────────────────────
+
+interface ChoreChildAssignmentProps {
+  chore: Chore;
+  childList: Child[];
+  assignedIds: Set<string>;
+  choreIndex: number;
+}
+
+function ChoreChildAssignment({
+  chore,
+  childList,
+  assignedIds,
+  choreIndex,
+}: ChoreChildAssignmentProps) {
+  const assignMutation = useAssignChoreToChildren();
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
+  if (childList.length === 0) return null;
+
+  const isAllChildren = assignedIds.size === 0;
+
+  const handleToggle = async (child: Child, checked: boolean) => {
+    const childIdStr = child.id.toString();
+    setPendingId(childIdStr);
+
+    // Build new set
+    const newSet = new Set(assignedIds);
+    if (checked) {
+      newSet.add(childIdStr);
+    } else {
+      newSet.delete(childIdStr);
+    }
+
+    const newIds = [...newSet].map((s) => BigInt(s));
+    try {
+      await assignMutation.mutateAsync({ choreId: chore.id, childIds: newIds });
+    } catch {
+      toast.error("Couldn't update assignment.");
+    } finally {
+      setPendingId(null);
+    }
+  };
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border/60">
+      <div className="flex items-center gap-1.5 mb-2.5">
+        <Users className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          Who's this for?
+        </span>
+        {isAllChildren && (
+          <span className="ml-1 text-xs bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-medium">
+            All children
+          </span>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {childList.map((child) => {
+          const isChecked = assignedIds.has(child.id.toString());
+          const isPending = pendingId === child.id.toString();
+          const emoji = getChildEmoji(child.name);
+          return (
+            <button
+              key={child.id.toString()}
+              type="button"
+              data-ocid={`chore.child_assign.checkbox.${choreIndex + 1}`}
+              disabled={isPending}
+              onClick={() => handleToggle(child, !isChecked)}
+              aria-pressed={isChecked}
+              aria-label={`${isChecked ? "Remove" : "Assign"} ${chore.name} for ${child.name}`}
+              className={`
+                inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-semibold cursor-pointer
+                transition-all duration-150 select-none
+                ${
+                  isChecked
+                    ? "bg-primary/12 border-primary/40 text-primary"
+                    : "bg-muted/40 border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                }
+                ${isPending ? "opacity-60" : ""}
+              `}
+            >
+              {isPending ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <span
+                  className={`w-3 h-3 rounded-sm border flex items-center justify-center shrink-0 ${
+                    isChecked
+                      ? "bg-primary border-primary"
+                      : "border-current bg-transparent"
+                  }`}
+                  aria-hidden="true"
+                >
+                  {isChecked && (
+                    <svg
+                      viewBox="0 0 8 8"
+                      className="w-2 h-2 fill-primary-foreground"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M1 4l2 2 4-4"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        fill="none"
+                      />
+                    </svg>
+                  )}
+                </span>
+              )}
+              <span>{emoji}</span>
+              <span>{child.name}</span>
+            </button>
+          );
+        })}
+      </div>
+      {!isAllChildren && (
+        <p className="text-xs text-muted-foreground mt-1.5">
+          Unchecked children won't see this chore.{" "}
+          <button
+            type="button"
+            className="underline hover:text-foreground transition-colors"
+            onClick={async () => {
+              setPendingId("all");
+              try {
+                await assignMutation.mutateAsync({
+                  choreId: chore.id,
+                  childIds: [],
+                });
+              } catch {
+                toast.error("Couldn't reset assignment.");
+              } finally {
+                setPendingId(null);
+              }
+            }}
+          >
+            Assign to all
+          </button>
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ── Main Component ───────────────────────────────────────────
+
 export function ChoresTab() {
   const { data: chores, isLoading } = useGetAllChores();
+  const { data: children } = useGetChildren();
+  const { data: allAssignments } = useGetAllChoreAssignments();
   const addChore = useAddChore();
   const updateChore = useUpdateChore();
   const removeChore = useRemoveChore();
@@ -88,6 +256,15 @@ export function ChoresTab() {
   const [newForm, setNewForm] = useState<ChoreFormData>(defaultForm());
   const [editingId, setEditingId] = useState<bigint | null>(null);
   const [editForm, setEditForm] = useState<ChoreFormData>(defaultForm());
+
+  // Build a map of choreId -> Set<childIdStr>
+  const assignmentMap = new Map<string, Set<string>>();
+  for (const [choreId, childIds] of allAssignments ?? []) {
+    assignmentMap.set(
+      choreId.toString(),
+      new Set(childIds.map((id) => id.toString())),
+    );
+  }
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -275,190 +452,212 @@ export function ChoresTab() {
       ) : chores && chores.length > 0 ? (
         <div className="space-y-3">
           <AnimatePresence>
-            {chores.map((chore, index) => (
-              <motion.div
-                key={chore.id.toString()}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ delay: index * 0.04 }}
-                className={`bg-card rounded-2xl border border-border shadow-card p-4 transition-opacity ${
-                  !chore.isActive ? "opacity-60" : ""
-                }`}
-              >
-                {editingId === chore.id ? (
-                  /* Edit Mode */
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <Input
-                        value={editForm.name}
-                        onChange={(e) =>
-                          setEditForm((p) => ({ ...p, name: e.target.value }))
-                        }
-                        className="rounded-xl h-10"
-                        placeholder="Chore name"
-                      />
-                      <Input
-                        value={editForm.amount}
-                        onChange={(e) =>
-                          setEditForm((p) => ({ ...p, amount: e.target.value }))
-                        }
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        className="rounded-xl h-10"
-                        placeholder="Amount $"
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <Select
-                        value={editForm.frequency}
-                        onValueChange={(v) =>
-                          setEditForm((p) => ({
-                            ...p,
-                            frequency: v as ChoreFrequency,
-                          }))
-                        }
-                      >
-                        <SelectTrigger className="rounded-xl h-10">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                          <SelectItem value={ChoreFrequency.unlimitedDaily}>
-                            ♾️ Unlimited Daily
-                          </SelectItem>
-                          <SelectItem value={ChoreFrequency.oncePerDay}>
-                            ☀️ Once Per Day
-                          </SelectItem>
-                          <SelectItem value={ChoreFrequency.oncePerWeek}>
-                            📅 Once Per Week
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          id={`edit-active-${chore.id}`}
-                          checked={editForm.isActive}
-                          onCheckedChange={(v) =>
-                            setEditForm((p) => ({ ...p, isActive: v }))
+            {chores.map((chore, index) => {
+              const assignedIds =
+                assignmentMap.get(chore.id.toString()) ?? new Set<string>();
+              return (
+                <motion.div
+                  key={chore.id.toString()}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ delay: index * 0.04 }}
+                  data-ocid={`parent.chores.item.${index + 1}`}
+                  className={`bg-card rounded-2xl border border-border shadow-card p-4 transition-opacity ${
+                    !chore.isActive ? "opacity-60" : ""
+                  }`}
+                >
+                  {editingId === chore.id ? (
+                    /* Edit Mode */
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <Input
+                          value={editForm.name}
+                          onChange={(e) =>
+                            setEditForm((p) => ({ ...p, name: e.target.value }))
                           }
+                          className="rounded-xl h-10"
+                          placeholder="Chore name"
                         />
-                        <Label
-                          htmlFor={`edit-active-${chore.id}`}
-                          className="cursor-pointer text-sm font-semibold"
-                        >
-                          Active
-                        </Label>
+                        <Input
+                          value={editForm.amount}
+                          onChange={(e) =>
+                            setEditForm((p) => ({
+                              ...p,
+                              amount: e.target.value,
+                            }))
+                          }
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          className="rounded-xl h-10"
+                          placeholder="Amount $"
+                        />
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleUpdate(chore.id)}
-                        disabled={updateChore.isPending}
-                        className="rounded-xl flex-1 font-semibold"
-                      >
-                        {updateChore.isPending ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
-                        ) : (
-                          <Check className="w-3.5 h-3.5 mr-1.5" />
-                        )}
-                        Save
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setEditingId(null)}
-                        className="rounded-xl flex-1"
-                      >
-                        <X className="w-3.5 h-3.5 mr-1.5" />
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  /* View Mode */
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-display font-bold text-foreground truncate">
-                          {chore.name}
-                        </span>
-                        {!chore.isActive && (
-                          <Badge
-                            variant="secondary"
-                            className="text-xs rounded-full"
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <Select
+                          value={editForm.frequency}
+                          onValueChange={(v) =>
+                            setEditForm((p) => ({
+                              ...p,
+                              frequency: v as ChoreFrequency,
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="rounded-xl h-10">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            <SelectItem value={ChoreFrequency.unlimitedDaily}>
+                              ♾️ Unlimited Daily
+                            </SelectItem>
+                            <SelectItem value={ChoreFrequency.oncePerDay}>
+                              ☀️ Once Per Day
+                            </SelectItem>
+                            <SelectItem value={ChoreFrequency.oncePerWeek}>
+                              📅 Once Per Week
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            id={`edit-active-${chore.id}`}
+                            checked={editForm.isActive}
+                            onCheckedChange={(v) =>
+                              setEditForm((p) => ({ ...p, isActive: v }))
+                            }
+                          />
+                          <Label
+                            htmlFor={`edit-active-${chore.id}`}
+                            className="cursor-pointer text-sm font-semibold"
                           >
-                            Inactive
-                          </Badge>
-                        )}
+                            Active
+                          </Label>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className="font-display font-extrabold text-success text-lg">
-                          {centsToUSD(chore.amountCents)}
-                        </span>
-                        <span
-                          className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border ${frequencyColor(chore.frequency)}`}
+                      <div className="flex gap-2">
+                        <Button
+                          data-ocid={`parent.chores.save_button.${index + 1}`}
+                          size="sm"
+                          onClick={() => handleUpdate(chore.id)}
+                          disabled={updateChore.isPending}
+                          className="rounded-xl flex-1 font-semibold"
                         >
-                          {frequencyEmoji(chore.frequency)}{" "}
-                          {frequencyLabel(chore.frequency)}
-                        </span>
+                          {updateChore.isPending ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5 mr-1.5" />
+                          )}
+                          Save
+                        </Button>
+                        <Button
+                          data-ocid={`parent.chores.cancel_button.${index + 1}`}
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setEditingId(null)}
+                          className="rounded-xl flex-1"
+                        >
+                          <X className="w-3.5 h-3.5 mr-1.5" />
+                          Cancel
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <Switch
-                        data-ocid={`parent.chores.switch.${index + 1}`}
-                        checked={chore.isActive}
-                        onCheckedChange={() => handleToggleActive(chore)}
-                        aria-label="Toggle active"
-                      />
-                      <Button
-                        data-ocid={`parent.chores.edit_button.${index + 1}`}
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => startEdit(chore)}
-                        className="rounded-xl hover:bg-primary/10"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
+                  ) : (
+                    /* View Mode */
+                    <div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-display font-bold text-foreground truncate">
+                              {chore.name}
+                            </span>
+                            {!chore.isActive && (
+                              <Badge
+                                variant="secondary"
+                                className="text-xs rounded-full"
+                              >
+                                Inactive
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <span className="font-display font-extrabold text-success text-lg">
+                              {centsToUSD(chore.amountCents)}
+                            </span>
+                            <span
+                              className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border ${frequencyColor(chore.frequency)}`}
+                            >
+                              {frequencyEmoji(chore.frequency)}{" "}
+                              {frequencyLabel(chore.frequency)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Switch
+                            data-ocid={`parent.chores.switch.${index + 1}`}
+                            checked={chore.isActive}
+                            onCheckedChange={() => handleToggleActive(chore)}
+                            aria-label="Toggle active"
+                          />
                           <Button
-                            data-ocid={`parent.chores.delete_button.${index + 1}`}
+                            data-ocid={`parent.chores.edit_button.${index + 1}`}
                             variant="ghost"
                             size="icon"
-                            className="rounded-xl hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => startEdit(chore)}
+                            className="rounded-xl hover:bg-primary/10"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Pencil className="w-4 h-4" />
                           </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="rounded-2xl">
-                          <AlertDialogHeader>
-                            <AlertDialogTitle className="font-display">
-                              Delete "{chore.name}"?
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will permanently remove this chore.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel className="rounded-xl">
-                              Cancel
-                            </AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleRemove(chore.id, chore.name)}
-                              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                data-ocid={`parent.chores.delete_button.${index + 1}`}
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-xl hover:bg-destructive/10 hover:text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="rounded-2xl">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="font-display">
+                                  Delete "{chore.name}"?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently remove this chore.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel className="rounded-xl">
+                                  Cancel
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() =>
+                                    handleRemove(chore.id, chore.name)
+                                  }
+                                  className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+
+                      {/* Child assignment section */}
+                      <ChoreChildAssignment
+                        chore={chore}
+                        childList={children ?? []}
+                        assignedIds={assignedIds}
+                        choreIndex={index}
+                      />
                     </div>
-                  </div>
-                )}
-              </motion.div>
-            ))}
+                  )}
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
         </div>
       ) : (

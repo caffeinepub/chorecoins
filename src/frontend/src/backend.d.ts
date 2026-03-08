@@ -66,7 +66,9 @@ export interface backendInterface {
     addChore(name: string, amountCents: bigint, frequency: ChoreFrequency, isActive: boolean): Promise<bigint>;
     approveCompletion(completionId: bigint): Promise<boolean>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    assignChoreToChildren(choreId: bigint, childIds: Array<bigint>): Promise<void>;
     deductMoney(childId: bigint, amountCents: bigint, note: string): Promise<boolean>;
+    getAllChoreAssignments(): Promise<Array<[bigint, Array<bigint>]>>;
     getAllChores(): Promise<Array<Chore>>;
     getAllCompletions(): Promise<Array<ChoreCompletion>>;
     getAllTransactions(): Promise<Array<Transaction>>;
@@ -76,6 +78,7 @@ export interface backendInterface {
     getChildInfo(childId: bigint): Promise<Child | null>;
     getChildTransactions(childId: bigint): Promise<Array<Transaction>>;
     getChildren(): Promise<Array<Child>>;
+    getChoreAssignments(choreId: bigint): Promise<Array<bigint>>;
     getChoresForChild(childId: bigint): Promise<Array<ChoreWithAvailability>>;
     getPendingCompletions(): Promise<Array<ChoreCompletion>>;
     getTransactions(childId: bigint): Promise<Array<Transaction>>;

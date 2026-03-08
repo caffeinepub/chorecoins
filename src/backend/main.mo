@@ -13,7 +13,10 @@ import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
+import Migration "migration";
 
+// Enable state migration with `with` clause
+(with migration = Migration.run)
 actor {
   // --- Types ---
   public type ChoreFrequency = {
@@ -59,6 +62,12 @@ actor {
 
   public type UserProfile = { name : Text };
 
+  public type ChoreWithAvailability = {
+    chore : Chore;
+    canSubmit : Bool;
+    reason : ?Text;
+  };
+
   // --- Comparison modules ---
   module Transaction {
     public func compare(t1 : Transaction, t2 : Transaction) : Order.Order {
@@ -84,21 +93,13 @@ actor {
     };
   };
 
-  public type ChoreWithAvailability = {
-    chore : Chore;
-    canSubmit : Bool;
-    reason : ?Text;
-  };
-
-  // --- State Variables ---
-  var isInitialized = false;
-
   // --- Storage Structures ---
   let children = Map.empty<Nat, Child>();
   let chores = Map.empty<Nat, Chore>();
   let transactions = Map.empty<Nat, Transaction>();
   let completions = Map.empty<Nat, ChoreCompletion>();
   let userProfiles = Map.empty<Principal, UserProfile>();
+  let choreAssignments = Map.empty<Nat, List.List<Nat>>();
 
   // Unique ID counters
   var nextChildId = 1;
@@ -183,6 +184,31 @@ actor {
     completionsIter.any(func(completion) { isThisWeek(completion.submittedAt) });
   };
 
+  // --- Chore Assignment Functions ---
+  public shared ({ caller }) func assignChoreToChildren(choreId : Nat, childIds : [Nat]) : async () {
+    assertAdmin(caller);
+    if (not chores.containsKey(choreId)) { Runtime.trap("Chore not found") };
+    let childIdList = List.fromArray<Nat>(childIds);
+    choreAssignments.add(choreId, childIdList);
+  };
+
+  // Returns [childIds] for a specific chore. If none, returns empty.
+  public query ({ caller }) func getChoreAssignments(choreId : Nat) : async [Nat] {
+    assertAdmin(caller);
+    switch (choreAssignments.get(choreId)) {
+      case (?assignmentList) { assignmentList.toArray() };
+      case (null) { [] };
+    };
+  };
+
+  // Returns all assignments as array of (choreId, [childIds]) pairs
+  public query ({ caller }) func getAllChoreAssignments() : async [(Nat, [Nat])] {
+    assertAdmin(caller);
+    choreAssignments.toArray().map(
+      func((choreId, childList)) { (choreId, childList.toArray()) }
+    );
+  };
+
   // --- Chore Functions (Admin Only) ---
   public shared ({ caller }) func addChore(name : Text, amountCents : Int, frequency : ChoreFrequency, isActive : Bool) : async Nat {
     assertAdmin(caller);
@@ -229,6 +255,7 @@ actor {
     assertAdmin(caller);
     let existed = chores.containsKey(choreId);
     chores.remove(choreId);
+    choreAssignments.remove(choreId); // Remove assignments if exist
     existed;
   };
 
@@ -371,13 +398,26 @@ actor {
     children.get(childId);
   };
 
+  // PUBLIC function: Returns available chores for a child (takes assignments into account)
   public query ({ caller }) func getChoresForChild(childId : Nat) : async [ChoreWithAvailability] {
     let activeChores = chores.values().toArray().filter(func(chore) { chore.isActive });
     let relevantCompletions = completions.values().toArray().filter(
       func(completion) { completion.childId == childId and (completion.status == #approved or completion.status == #pending) }
     );
 
-    activeChores.map(func(chore : Chore) : ChoreWithAvailability {
+    let filteredChores = activeChores.filter(
+      func(chore) {
+        switch (choreAssignments.get(chore.id)) {
+          case (?assignmentList) {
+            if (assignmentList.size() == 0) { true } // Empty assignments allow all
+            else { assignmentList.any(func(assignedChildId) { assignedChildId == childId }) };
+          };
+          case (null) { true }; // No assignments allow all
+        };
+      }
+    );
+
+    filteredChores.map(func(chore : Chore) : ChoreWithAvailability {
       let choreCompletions = relevantCompletions.filter(func(c) { c.choreId == chore.id });
       let (canSubmit, reason) = switch (chore.frequency) {
         case (#unlimitedDaily) { (true, null) };
