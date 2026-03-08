@@ -1,0 +1,140 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Bricolage Grotesque — display / headings
+   ============================================================ */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/assets/fonts/BricolageGrotesque.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ============================================================
+   Figtree — body / UI
+   ============================================================ */
+@font-face {
+  font-family: "Figtree";
+  src: url("/assets/fonts/Figtree.woff2") format("woff2");
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 1rem;
+
+    /* ── Core palette ─────────────────────────────────────── */
+    /* Cream / warm white background */
+    --background: 0.98 0.012 85;
+    --foreground: 0.18 0.04 260;
+
+    /* Card: pure white with slight warmth */
+    --card: 1 0 0;
+    --card-foreground: 0.18 0.04 260;
+
+    /* Popover */
+    --popover: 1 0 0;
+    --popover-foreground: 0.18 0.04 260;
+
+    /* Primary: Sunflower yellow */
+    --primary: 0.82 0.18 85;
+    --primary-foreground: 0.15 0.03 260;
+
+    /* Secondary: Soft lavender */
+    --secondary: 0.93 0.03 290;
+    --secondary-foreground: 0.2 0.05 270;
+
+    /* Muted */
+    --muted: 0.94 0.015 85;
+    --muted-foreground: 0.52 0.03 255;
+
+    /* Accent: Electric coral */
+    --accent: 0.72 0.2 28;
+    --accent-foreground: 1 0 0;
+
+    /* Destructive: Vivid red */
+    --destructive: 0.6 0.22 25;
+    --destructive-foreground: 1 0 0;
+
+    /* Border / input */
+    --border: 0.88 0.025 85;
+    --input: 0.88 0.025 85;
+    --ring: 0.82 0.18 85;
+
+    /* Success: Mint green */
+    --success: 0.72 0.17 155;
+    --success-foreground: 1 0 0;
+
+    /* Warning: Amber */
+    --warning: 0.78 0.18 60;
+    --warning-foreground: 0.15 0.03 45;
+
+    /* Chart colors */
+    --chart-1: 0.82 0.18 85;
+    --chart-2: 0.72 0.2 28;
+    --chart-3: 0.72 0.17 155;
+    --chart-4: 0.65 0.18 290;
+    --chart-5: 0.6 0.19 200;
+
+    /* Sidebar */
+    --sidebar: 0.18 0.04 260;
+    --sidebar-foreground: 0.93 0.015 85;
+    --sidebar-primary: 0.82 0.18 85;
+    --sidebar-primary-foreground: 0.15 0.03 260;
+    --sidebar-accent: 0.25 0.05 260;
+    --sidebar-accent-foreground: 0.93 0.015 85;
+    --sidebar-border: 0.28 0.04 260;
+    --sidebar-ring: 0.82 0.18 85;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+    background-image:
+      radial-gradient(circle at 15% 15%, oklch(0.82 0.18 85 / 0.12) 0%, transparent 50%),
+      radial-gradient(circle at 85% 85%, oklch(0.72 0.17 155 / 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 50% 50%, oklch(0.72 0.2 28 / 0.06) 0%, transparent 70%);
+    min-height: 100vh;
+  }
+}
+
+/* ── Utility classes ───────────────────────────────────────── */
+@layer utilities {
+  .font-display {
+    font-family: "Bricolage Grotesque", sans-serif;
+  }
+  .font-body {
+    font-family: "Figtree", sans-serif;
+  }
+
+  .balance-glow {
+    text-shadow:
+      0 0 30px oklch(0.72 0.17 155 / 0.4),
+      0 2px 4px oklch(0.72 0.17 155 / 0.2);
+  }
+
+  .chore-card-done {
+    background: linear-gradient(
+      135deg,
+      oklch(0.82 0.18 85 / 0.15),
+      oklch(0.72 0.17 155 / 0.1)
+    );
+  }
+
+  .chore-card-unavailable {
+    background: oklch(0.94 0.01 85);
+    opacity: 0.75;
+  }
+}
