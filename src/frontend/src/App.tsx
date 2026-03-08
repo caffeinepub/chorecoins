@@ -1,5 +1,6 @@
 import { Toaster } from "@/components/ui/sonner";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import { ChildDashboard } from "./pages/ChildDashboard";
 import { ParentDashboard } from "./pages/ParentDashboard";
 import { ProfileSetup } from "./pages/ProfileSetup";
@@ -14,6 +15,17 @@ export type AppView =
 
 export default function App() {
   const [view, setView] = useState<AppView>({ mode: "select" });
+  const { identity, isInitializing } = useInternetIdentity();
+  // Prevent repeated auto-redirects on re-renders
+  const autoRedirected = useRef(false);
+
+  // If a valid session is already stored, jump straight to the parent flow
+  useEffect(() => {
+    if (!isInitializing && identity && !autoRedirected.current) {
+      autoRedirected.current = true;
+      setView((v) => (v.mode === "select" ? { mode: "profile" } : v));
+    }
+  }, [isInitializing, identity]);
 
   return (
     <>
