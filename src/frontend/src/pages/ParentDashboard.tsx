@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, LogOut } from "lucide-react";
+import { ArrowLeft, LogOut, Pencil } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { ApprovalsTab } from "../components/app/ApprovalsTab";
@@ -9,19 +9,27 @@ import { ChildDetail } from "../components/app/ChildDetail";
 import { ChildrenTab } from "../components/app/ChildrenTab";
 import { ChoresTab } from "../components/app/ChoresTab";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { useGetPendingCompletions } from "../hooks/useQueries";
+import {
+  useGetCallerUserProfile,
+  useGetPendingCompletions,
+} from "../hooks/useQueries";
 
 interface ParentDashboardProps {
   onBack: () => void;
+  onEditProfile?: () => void;
 }
 
 type ParentView =
   | { view: "tabs"; tab: string }
   | { view: "childDetail"; childId: bigint; childName: string };
 
-export function ParentDashboard({ onBack }: ParentDashboardProps) {
+export function ParentDashboard({
+  onBack,
+  onEditProfile,
+}: ParentDashboardProps) {
   const { clear, identity } = useInternetIdentity();
   const { data: pendingCompletions } = useGetPendingCompletions();
+  const { data: profile } = useGetCallerUserProfile();
   const [parentView, setParentView] = useState<ParentView>({
     view: "tabs",
     tab: "children",
@@ -35,6 +43,7 @@ export function ParentDashboard({ onBack }: ParentDashboardProps) {
   };
 
   const principalShort = `${identity?.getPrincipal().toString().slice(0, 8)}…`;
+  const displayName = profile?.name ?? principalShort;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -55,9 +64,22 @@ export function ParentDashboard({ onBack }: ParentDashboardProps) {
               <h1 className="font-display font-bold text-lg leading-tight">
                 Parent Dashboard
               </h1>
-              {identity && (
-                <p className="text-xs opacity-60 font-mono">{principalShort}</p>
-              )}
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs opacity-70 font-medium truncate max-w-[160px]">
+                  {displayName}
+                </p>
+                {onEditProfile && (
+                  <button
+                    type="button"
+                    data-ocid="parent.edit_profile_button"
+                    onClick={onEditProfile}
+                    aria-label="Edit profile"
+                    className="opacity-50 hover:opacity-100 transition-opacity p-0.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
           <Button

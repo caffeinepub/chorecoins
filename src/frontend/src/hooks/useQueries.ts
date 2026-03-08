@@ -6,6 +6,7 @@ import {
   ChoreFrequency,
   type ChoreWithAvailability,
   type Transaction,
+  type UserProfile,
 } from "../backend.d";
 import { useActor } from "./useActor";
 
@@ -390,5 +391,33 @@ export function useIsAdmin() {
       return actor.isCallerAdmin();
     },
     enabled: !!actor && !isFetching,
+  });
+}
+
+// ── User Profile ─────────────────────────────────────────────
+
+export function useGetCallerUserProfile() {
+  const { actor, isFetching } = useActor();
+  return useQuery<UserProfile | null>({
+    queryKey: ["callerUserProfile"],
+    queryFn: async () => {
+      if (!actor) return null;
+      return actor.getCallerUserProfile();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useSaveCallerUserProfile() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (profile: UserProfile) => {
+      if (!actor) throw new Error("No actor");
+      return actor.saveCallerUserProfile(profile);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["callerUserProfile"] });
+    },
   });
 }
